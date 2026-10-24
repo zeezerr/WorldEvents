@@ -478,35 +478,27 @@ public final class EventManager {
     }
 
     private void runFrame(List<WorldEvent> frames, List<Integer> delays, int i, WorldEvent chosen, long total) {
-        boolean last = i == frames.size() - 1;
-        showSpinFrame(frames.get(i), last, i / (double) frames.size());
-        if (last) {
-            spinTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                spinning = false;
-                spinTask = null;
-                startEvent(chosen, total, total, null, false);
-            }, 30L);
+        if (i == frames.size() - 1) {
+            // landed: go straight into the event. Its own announcement is the only reveal.
+            spinning = false;
+            spinTask = null;
+            startEvent(chosen, total, total, null, false);
             return;
         }
+        showSpinFrame(frames.get(i), i / (double) frames.size());
         spinTask = Bukkit.getScheduler().runTaskLater(plugin,
                 () -> runFrame(frames, delays, i + 1, chosen, total), delays.get(i));
     }
 
-    private void showSpinFrame(WorldEvent ev, boolean last, double progress) {
-        Component main = plugin.mm("<dark_gray>[ </dark_gray>" + ev.getColorTag()
-                + (last ? "<bold>" : "") + ev.getName() + "<reset><dark_gray> ]");
-        Component sub = plugin.mm(last ? "<yellow>The wheel has decided!" : "<gray>Spinning the wheel...");
-        Title title = Title.title(main, sub, Title.Times.times(Duration.ZERO,
-                Duration.ofMillis(last ? 1500 : 700), Duration.ZERO));
+    private void showSpinFrame(WorldEvent ev, double progress) {
+        Component main = plugin.mm("<dark_gray>[ </dark_gray>" + ev.getColorTag() + ev.getName()
+                + "<reset><dark_gray> ]");
+        Component sub = plugin.mm("<gray>Spinning the wheel...");
+        Title title = Title.title(main, sub, Title.Times.times(Duration.ZERO, Duration.ofMillis(700), Duration.ZERO));
         boolean sounds = plugin.getConfig().getBoolean("sounds", true);
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.showTitle(title);
-            if (!sounds) continue;
-            if (last) {
-                p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
-                p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
-                p.spawnParticle(Particle.END_ROD, p.getLocation().add(0, 1, 0), 40, 0.6, 0.8, 0.6, 0.1);
-            } else {
+            if (sounds) {
                 p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 0.8f, (float) (0.8 + 0.8 * progress));
             }
         }
